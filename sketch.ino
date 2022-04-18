@@ -1,7 +1,8 @@
+#include <ArduinoJson.h>
+
 #include <ESP8266WiFi.h>              
 #include <WiFiClient.h>
 #include <TimeLib.h>
-#include <ArduinoJson.h>
 
 #define LED_BUILTIN 2
 
@@ -31,34 +32,29 @@ void loop() {}
 
 void pingController() {
     if (client.connect(local, 8080)) {
-        // client.println("GET /esp HTTP/1.1\r\nHost: 192.168.0.25:8080");
         
-        client.println("GET /esp HTTP/1.1");
-        client.println("Host: localhost:8080");
-        client.println(F("Connection: close"));
-
-        if (client.println() == 0) {
-            Serial.println(F("Failed to send request"));
-            client.stop();
-            return;
-        } 
-        
+        // Send HTTP request
+        client.println("GET /esp HTTP/1.0\r\nHost: 192.168.0.25:8080\r\n\r\n");
         delay(200);
-        char endOfHeaders[] = "\r\n\r\n"; 
 
-        if (!client.find(endOfHeaders)) {                                       
-            Serial.println("Invalid response");                                   
+        // Skip HTTP headers
+        char endOfHeaders[] = "\r\n\r\n";
+        if (!client.find(endOfHeaders)) {                      
+            Serial.println("Invalid response");
+            return;
         }
 
         const size_t capacity = 750;
         DynamicJsonBuffer jsonBuffer(capacity);
+
+    
         JsonObject& root = jsonBuffer.parseObject(client);
+        client.stop();   
 
-        client.stop();
-
-        String name = root["name"].as<String>();
-        Serial.println("");
-        Serial.println("Name is: " + name);
+        Serial.println(F("Response:"));
+        Serial.println(root["id"].as<int>());
+        Serial.println(root["name"].as<String>());
+        Serial.println(root["name2"].as<String>());
 
     }
 }
@@ -72,12 +68,4 @@ void improvedDelay(unsigned int waitTime) {
             cooldownState = false;
     }
 
-    const size_t capacity = 750;
-    DynamicJsonBuffer jsonBuffer(capacity); 
-
-    JsonObject& root = jsonBuffer.parseObject(client);                      
-    client.stop();  
 }
-
-// GET /esp HTTP/1.1
-// Host: localhost:8080
