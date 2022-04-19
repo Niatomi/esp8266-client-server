@@ -53,8 +53,6 @@
                 "TCP_MSS=1460",
                 "LWIP_FEATURES=1",
                 "LWIP_IPV6=1",
-                "DEBUG_ESP_PORT=Serial",
-                "DEBUG_ESP_SSL",
                 "ARDUINO=10809",
                 "ARDUINO_ESP8266_NODEMCU_ESP12E",
                 "ARDUINO_ARCH_ESP8266",
