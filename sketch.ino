@@ -2,86 +2,93 @@
 #include <ESP8266WiFi.h>              
 #include <WiFiClient.h>
 #include <TimeLib.h>
-#include <LiquidCrystal_I2C.h>
 #include <Key.h>
 #include <Keypad.h>
 
 #define LED_BUILTIN 2
 volatile unsigned long globalTimeBufferMillis = 0;
 
-// Lcd
-int lcdColumns = 20;
-int lcdRows = 4;
-LiquidCrystal_I2C lcd(0x27, lcdColumns, lcdRows);  
-
 // WiFi, HTTP
 const char* ssid = "Ttk 139";
 const char* password = "631790355";
 
 WiFiClient client;
-IPAddress local(192, 168, 0, 25);
+IPAddress local(192, 168, 0, 14);
 uint16_t port = 8080;
 
-// Keypad
-const byte ROWS = 4; //four rows
-const byte COLS = 3; //four columns
+DynamicJsonDocument doc(2048);
+unsigned long openerId;
 
-char keymap[ROWS][COLS] = {
-  {'1','2','3'},
-  {'4','5','6'},
-  {'7','8','9'},
-  {'*','0','#'}
-};
-byte rowPins[ROWS] = {D1, D2, D3, D4}; 
-byte colPins[COLS] = {D5, D6, D7}; 
-Keypad keypad = Keypad( makeKeymap(keymap), rowPins, colPins, ROWS, COLS); 
-
+String enteringPassword = "12345";
 
 void setup() {
-    // pinMode(A0, INPUT);
 
-    // lcd.init();
-    // lcd.backlight();
-    
-    // lcd.setCursor(0, 0);
-    // lcd.print("Connecting to:");
-    // lcd.setCursor(0, 1);
-    // lcd.print(ssid);
-
-                      
-           
-
-    // WiFi.begin(ssid, password);
+    WiFi.begin(ssid, password);
   
-    // while (WiFi.status() != WL_CONNECTED)
-    //     delay(500);
+    while (WiFi.status() != WL_CONNECTED)
+        delay(500);
 
-    // lcd.clear();
-    // lcd.setCursor(0, 0);
-    // lcd.print("Connection success");
-    // lcd.clear();
-//     Serial.setCursor(0, 0);
+    Serial.begin(9600);
+}
 
-    // pingController();
+boolean checkPassword(String enteringPassword, String enteringType) {
+    getPasswords();
 
-     Serial.begin(9600);
+    for (JsonObject item : doc.as<JsonArray>()) {
+        openerId = item["openerId"]; 
+        String type = item["type"]; 
+        String value = item["value"]; 
+
+        if (type == enteringType) {
+            if (value ==  enteringPassword) {
+                return true;
+            }
+        }
+    }
+
+    return false;
 }
 
 void loop() {
+    if (Serial.available()) {
 
-    char key = keypad.getKey();
+        String expression = Serial.readStringUntil('-');
 
-  if (key){
-    Serial.println(key);
-  }
+        String method = expression.substring(0, expression.indexOf(':'));
+        expression = expression.substring(expression.indexOf(':') + 1, expression.length());
+
+        if (method == "check") {
+
+            String type = expression.substring(0, expression.indexOf(':'));
+            expression = expression.substring(expression.indexOf(':') + 1, expression.length());
+            
+            enteringPassword = expression.substring(0, expression.length());
+
+            if (checkPassword(enteringPassword, type)) {
+                Serial.write("1-");
+                sendAction(true);
+            } else {
+                Serial.write("0-");
+            }
+
+        } 
+    }
 }
 
-void pingController() {
+void sendAction(boolean isActionAuthorized) {
+
+    if (!isActionAuthorized) {
+        opener
+    }
+
+}
+
+void getPasswords() {
     if (client.connect(local, 8080)) {
         
         // Send HTTP request
         client.println("GET /esp HTTP/1.0\r\n");
-        client.println("Host: 192.168.0.25:8080\r\n\r\n");
+        client.println("Host: 192.168.0.14:8080\r\n\r\n");
         delay(200);
 
         // Skip HTTP headers
@@ -91,18 +98,9 @@ void pingController() {
             return;
         }
 
-        const size_t capacity = 750;
-        DynamicJsonBuffer jsonBuffer(capacity);
-
-    
-        JsonObject& root = jsonBuffer.parseObject(client);
-        client.stop();   
-
-        Serial.println(F("Response:"));
-        Serial.println(root["id"].as<int>());
-        Serial.println(root["name"].as<String>());
-        Serial.println(root["name2"].as<String>());
-
+        deserializeJson(doc, client);
+        client.stop();
+        // serializeJson(doc, Serial);
     }
 }
 
@@ -114,5 +112,4 @@ void improvedDelay(unsigned int waitTime) {
         if (millis() - globalTimeBufferMillis > waitTime) 
             cooldownState = false;
     }
-
 }
