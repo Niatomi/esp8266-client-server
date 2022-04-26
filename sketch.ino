@@ -9,11 +9,14 @@
 volatile unsigned long globalTimeBufferMillis = 0;
 
 // WiFi, HTTP
-const char* ssid = "Ttk 139";
-const char* password = "631790355";
+// const char* ssid = "Ttk 139";
+// const char* password = "631790355";
+
+const char* ssid = "Niatomi";
+const char* password = "1234567890";
 
 WiFiClient client;
-IPAddress local(192, 168, 0, 14);
+IPAddress local(192, 168, 137, 1);
 uint16_t port = 8080;
 
 DynamicJsonDocument doc(2048);
@@ -45,7 +48,7 @@ boolean checkPassword(String enteringPassword, String enteringType) {
             }
         }
     }
-
+    openerId = 1;
     return false;
 }
 
@@ -67,8 +70,11 @@ void loop() {
             if (checkPassword(enteringPassword, type)) {
                 Serial.write("1-");
                 sendAction(true);
+                openerId = 0;
             } else {
                 Serial.write("0-");
+                sendAction(false);
+                openerId = 0;
             }
 
         } 
@@ -78,17 +84,58 @@ void loop() {
 void sendAction(boolean isActionAuthorized) {
 
     if (!isActionAuthorized) {
-        opener
+        if (client.connect(local, port)) {
+
+            StaticJsonDocument<48> docOut;
+
+            docOut["openerId"] = openerId;
+            docOut["description"] = "Unauthorized";
+
+            // Write response headers
+            client.println("POST /esp HTTP/1.1");
+            client.println("Host: " + local.toString() + ":8080");
+            client.println("Content-Type: application/json");
+            client.println("Connection: close");
+            client.print("Content-Length: ");
+            client.println(measureJsonPretty(docOut));
+            client.println();
+
+            // Write JSON document
+            serializeJsonPretty(docOut, client);
+
+            // Disconnect
+            client.stop();
+            
+            // Send HTTP request
+            // client.println("POST /esp HTTP/1.1\r\n");
+            // client.println("Host: 192.168.0.14:8080\r\n");
+            // client.println("Content-Type: application/json\r\n\r\n");
+            // client.println("Content-Type: application/json\r\n");
+            // delay(200);
+
+            // // Skip HTTP headers
+            // char endOfHeaders[] = "\r\n\r\n";
+            // if (!client.find(endOfHeaders)) {                      
+            //     Serial.println("Invalid response");
+            //     return;
+            // }
+
+            // deserializeJson(doc, client);
+            // client.stop();
+            // serializeJson(doc, Serial);
+        }
+    } else {
+
     }
 
 }
 
 void getPasswords() {
-    if (client.connect(local, 8080)) {
+    if (client.connect(local, port)) {
         
         // Send HTTP request
         client.println("GET /esp HTTP/1.0\r\n");
-        client.println("Host: 192.168.0.14:8080\r\n\r\n");
+        client.println("Host: " + local.toString() + ":8080");
         delay(200);
 
         // Skip HTTP headers
@@ -102,6 +149,10 @@ void getPasswords() {
         client.stop();
         // serializeJson(doc, Serial);
     }
+}
+
+void sendHttpAction() {
+    
 }
 
 void improvedDelay(unsigned int waitTime) {
